@@ -32,7 +32,7 @@ jobs:
          context: .
          file: docker/Dockerfile-komet-web
          push: true
-         tags: ${{ secrets.DOCKER_USERNAME }}/komet:${{ github.sha }}
+         tags: ${{ secrets.DOCKER_USERNAME }}/komet:${{ github.ref_name }}
 
 
 
