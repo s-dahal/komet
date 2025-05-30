@@ -27,6 +27,16 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build and push Docker image
-        run: |
-         docker build -t ${{ secrets.DOCKER_USERNAME }}/komet:${{ github.sha}} ./docker/
-         docker push ${{ secrets.DOCKER_USERNAME }}/komet:${{ github.sha }}
+        uses: docker/build-push-action@v4
+        with:
+         context: .
+         file: docker/Dockerfile-komet-web
+         push: true
+         tags: ${{ secrets.DOCKER_USERNAME }}/komet:${{ github.sha }}
+
+
+
+      # - name: Build and push Docker image
+      #   run: |
+      #    docker build -t ${{ secrets.DOCKER_USERNAME }}/komet:${{ github.sha}} ./docker/
+      #    docker push ${{ secrets.DOCKER_USERNAME }}/komet:${{ github.sha }}
