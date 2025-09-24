@@ -697,6 +697,9 @@ public class PatternDetailsController {
 
     private ContextMenu createContextMenuForPatternField(PatternField selectedPatternField) {
 
+        String patternMode =  patternViewModel.getPropertyValue(MODE);
+        boolean isCreateMode = CREATE.equals(patternMode);
+
         Object[][] menuItems = new Object[][]{
                 {"Edit", true, new String[]{"menu-item"}, (EventHandler<ActionEvent>) actionEvent -> showEditFieldsPanel(actionEvent, selectedPatternField), createGraphics("edit-icon")},
                 {MenuHelper.SEPARATOR},
@@ -704,7 +707,7 @@ public class PatternDetailsController {
                 {"Save to Favorites",  false, new String[]{"menu-item"}, null, createGraphics("favorites-icon")},
                 {MenuHelper.SEPARATOR},
                 {"Add Comment",  false, new String[]{"menu-item"}, null, createGraphics("comment-icon")},
-                {"Remove", true, new String[]{"menu-item"}, (EventHandler<ActionEvent>) actionEvent -> patternViewModel.getObservableList(FIELDS_COLLECTION).remove(selectedPatternField)
+                {"Remove", isCreateMode, new String[]{"menu-item"}, (EventHandler<ActionEvent>) actionEvent -> patternViewModel.getObservableList(FIELDS_COLLECTION).remove(selectedPatternField)
                 , createGraphics("remove-icon")}
         };
         return MenuHelper.getInstance().createContextMenuWithMenuItems(menuItems);
@@ -733,10 +736,10 @@ public class PatternDetailsController {
      */
     private String generateDescriptionSemantics(DescrName descrName){
         ViewCalculator viewCalculator = getViewProperties().calculator();
-        ConceptEntity caseSigConcept = descrName.getCaseSignificance();
+        EntityFacade caseSigConcept = descrName.getCaseSignificance();
         String casSigText = viewCalculator.getRegularDescriptionText(caseSigConcept.nid())
                 .orElse(caseSigConcept.nid()+"");
-        ConceptEntity langConcept = descrName.getLanguage();
+        EntityFacade langConcept = descrName.getLanguage();
         String langText = viewCalculator.getRegularDescriptionText(langConcept.nid())
                 .orElse(String.valueOf(langConcept.nid()));
         return "%s | %s".formatted(casSigText, langText);
@@ -900,32 +903,33 @@ public class PatternDetailsController {
         propertiesController.updateModel(patternViewModel.getPropertyValue(PATTERN));
 
         patternViewModel.getProperty(MODE).subscribe(newMode -> {
-            StampFormViewModelBase stampFormViewModel = propertiesController.getStampFormViewModel();
-
             if (newMode.equals(EDIT)) {
                 updateStampControlFromViewModel();
 
                 // now in EDIT mode, update the identifier
                 updateDisplayIdentifier();
-
-                stampFormViewModel.getBooleanProperty(IS_CONFIRMED_OR_SUBMITTED).subscribe(isSubmitted -> {
-                    if (isSubmitted) {
-                        updateStampControlFromViewModel();
-                        patternViewModel.setPropertyValue(PUBLISH_PENDING, true);
-                    }
-                });
-            } else if(newMode.equals(CREATE)) {
-                stampFormViewModel.getBooleanProperty(IS_CONFIRMED_OR_SUBMITTED).subscribe(isConfirmed -> {
-                    if (isConfirmed) {
-                        updateStampControlFromViewModel();
-                    }
-                });
             }
         });
+
+        propertiesController.getStampFormViewModel().getBooleanProperty(IS_CONFIRMED_OR_SUBMITTED).subscribe(this::onStampConfirmedOrSubmitted);
 
         //FIXME this doesn't work properly, should leave for a future effort...
         // open the panel, allow the state machine to determine which panel to show
         //EvtBusFactory.getDefaultEvtBus().publish(patternViewModel.getPropertyValue(PATTERN_TOPIC), new PropertyPanelEvent(propertiesToggleButton, OPEN_PANEL));
+    }
+
+    private void onStampConfirmedOrSubmitted(boolean isSubmittedOrConfirmed) {
+        if (!isSubmittedOrConfirmed) {
+            return;
+        }
+
+        updateStampControlFromViewModel();
+
+        if (patternViewModel.getPropertyValue(MODE).equals(EDIT)) {
+            patternViewModel.setPropertyValue(PUBLISH_PENDING, true);
+        }
+
+        stampViewControl.setDisable(true);
     }
 
     private void updateStampControlFromViewModel() {
